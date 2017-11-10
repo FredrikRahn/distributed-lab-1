@@ -195,7 +195,7 @@ class BlackboardRequestHandler(BaseHTTPRequestHandler):
 		return self.server.store.items()
 #------------------------------------------------------------------------------------------------------
 	'''
-	Fetch specific entry
+	Retrieve entry
 	@args:
 	@return: Entry:html
 	'''
@@ -203,7 +203,6 @@ class BlackboardRequestHandler(BaseHTTPRequestHandler):
 		self.set_HTTP_headers(200)
 		html_reponse = "TEMPORARY SHIET"
 		self.wfile.write(html_response)
-#------------------------------------------------------------------------------------------------------
 #------------------------------------------------------------------------------------------------------
 # Request handling - POST
 #------------------------------------------------------------------------------------------------------
