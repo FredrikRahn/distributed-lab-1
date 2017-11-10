@@ -158,19 +158,48 @@ class BlackboardRequestHandler(BaseHTTPRequestHandler):
 		self.do_GET_Index()
 #------------------------------------------------------------------------------------------------------
 # GET logic - specific path
+#Implement /board
 #------------------------------------------------------------------------------------------------------
+	'''
+	View the board's contents
+	@args:
+	@return: Entire page:html
+	'''
 	def do_GET_Index(self):
 		# We set the response status code to 200 (OK)
 		self.set_HTTP_headers(200)
+
+		fetch_index_header = board_frontpage_header_template
+		fetch_index_contents = boardcontents_template
+		fetch_index_entries = entry_template
+		fetch_index_footer = board_frontpage_footer_template
+
 		# We should do some real HTML here
-		html_reponse = index
+		html_reponse = fetch_index_header + fetch_index_contents + fetch_index_entries + fetch_index_footer
 		#In practice, go over the entries list,
 		#produce the boardcontents part,
 		#then construct the full page by combining all the parts ...
 
 		self.wfile.write(html_reponse)
 #------------------------------------------------------------------------------------------------------
-	def do_GET_entries(self):
+	'''
+	Lists all available entries
+	@args:
+	@return: List of entries
+	'''
+	def do_GET_all_entries(self):
+		# We set the response status code to 200 (OK)
+		self.set_HTTP_headers(200)
+		#Add temp entry to store to check if it works
+		self.server.store['ENTRY-OF-DESTINY-ID']="The entry of destinys ninth dragon of the eleventh sin"
+		return self.server.store.items()
+#------------------------------------------------------------------------------------------------------
+	'''
+	Fetch specific entry
+	@args:
+	@return: Entry:html
+	'''
+	def do_GET_entry(self):							#Fetch specific entry
 		self.set_HTTP_headers(200)
 		html_reponse = "TEMPORARY SHIET"
 		self.wfile.write(html_response)
@@ -198,8 +227,38 @@ class BlackboardRequestHandler(BaseHTTPRequestHandler):
 			thread.start()
 #------------------------------------------------------------------------------------------------------
 # POST Logic
+#Implement POST /entries					#Add a new entry
+#Implement POST /entries/entryID			#Delete an entry
 #------------------------------------------------------------------------------------------------------
-	# We might want some functions here as well
+	'''
+	Adds a new entry
+	@args: entry:text
+	@return: Status code
+	'''
+	def do_POST_modify_entry(self):
+		self.set_HTTP_headers(200)
+		html_reponse = "TEMPORARY SHIET"
+		self.wfile.write(html_response)
+#------------------------------------------------------------------------------------------------------
+	'''
+	Modifies a specific entry
+	@args: entry:text
+	@return: Status code
+	'''
+	def do_POST_modify_entry(self):
+		self.set_HTTP_headers(200)
+		html_reponse = "TEMPORARY SHIET"
+		self.wfile.write(html_response)
+#------------------------------------------------------------------------------------------------------
+	'''
+	Deletes an entry
+	@args: none
+	@return: Status code
+	'''
+	def do_POST_delete_entry(self):
+		self.set_HTTP_headers(200)
+		html_reponse = "TEMPORARY SHIET"
+		self.wfile.write(html_response)
 #------------------------------------------------------------------------------------------------------
 
 
