@@ -54,7 +54,7 @@ class BlackboardServer(HTTPServer):
                 self.current_key+=1
 		self.store[self.current_key]=value
                 return self.store[self.current_key] == value           #If value exists on correct key, return true
-                
+
 #------------------------------------------------------------------------------------------------------
 	# We modify a value received in the store
 	def modify_value_in_store(self,key,value):
@@ -160,6 +160,15 @@ class BlackboardRequestHandler(BaseHTTPRequestHandler):
 # GET logic - specific path
 #Implement /board
 #Implement /entry/entryID
+	def do_GET_path(self):
+		path = self.path[0:-1]	#Remove first /
+		path = path.split('/')
+		if path[0] == 'board':
+			self.do_GET_all_entries()
+		elif path[0] == 'entry':
+			self.do_GET_entry(path[1])
+		else:
+			return				#unknown path so just return
 #------------------------------------------------------------------------------------------------------
 	'''
 	View the board's contents
@@ -172,7 +181,7 @@ class BlackboardRequestHandler(BaseHTTPRequestHandler):
 
 		fetch_index_header = board_frontpage_header_template
 		fetch_index_contents = boardcontents_template
-                fetch_index_entries = self.do_GET_all_entries()
+        fetch_index_entries = self.do_GET_all_entries()
 		fetch_index_footer = board_frontpage_footer_template
 
 		# We should do some real HTML here
@@ -199,17 +208,12 @@ class BlackboardRequestHandler(BaseHTTPRequestHandler):
 	@args:
 	@return: Entry:html
 	'''
-	def do_GET_entry(self):							#Fetch specific entry
-                #Entry ID is the last element in the path list
-                entryId = self.get_path_list()[-1]
+	def do_GET_entry(entryID):							#Fetch specific entry
                 #Find the specific value for the entry, if entry does not exist set value to None
                 entryValue = self.server.store[entryId] if entryId in self.server.store else None
                 #Return found entry if it exists, or return empty string if no such entry was found
-                return entry_template %("entries/" + entryId, entryId, entryValue) if entryCalue != None else ""
+                return entry_template %("entries/" + entryId, entryId, entryValue) if entryValue != None else ""
 
-        def get_path_list(self):
-                return self.path.split('/')
-	        
 #------------------------------------------------------------------------------------------------------
 # Request handling - POST
 #------------------------------------------------------------------------------------------------------
@@ -218,7 +222,7 @@ class BlackboardRequestHandler(BaseHTTPRequestHandler):
 		# Here, we should check which path was requested and call the right logic based on it
 		# We should also parse the data received
 		# and set the headers for the client
-                
+
 		# If we want to retransmit what we received to the other vessels
 		retransmit = False # Like this, we will just create infinite loops!
 		if retransmit:
@@ -238,7 +242,7 @@ class BlackboardRequestHandler(BaseHTTPRequestHandler):
 #------------------------------------------------------------------------------------------------------
 	'''
 	Adds a new entry
-	@args: 
+	@args:
 	@return: Status code
 	'''
 	def do_POST_add_entry(self):
@@ -246,10 +250,10 @@ class BlackboardRequestHandler(BaseHTTPRequestHandler):
                 text = post_data["entry"] if "entry" in post_data else None
 
                 status_code = 200 if text != None and self.server.add_value_to_store(text) else 400
-                
+
                 self.set_HTTP_headers(status_code)
                 return status_code
-                
+
 
 #------------------------------------------------------------------------------------------------------
 	'''
