@@ -22,7 +22,6 @@ board_frontpage_header_template = open('board_frontpage_header_template.html', '
 boardcontents_template = open('boardcontents_template.html', 'r').read()
 entry_template = open('entry_template.html', 'r').read()
 board_frontpage_footer_template = open('board_frontpage_footer_template.html', 'r').read()
-index = board_frontpage_header_template + boardcontents_template + entry_template + board_frontpage_footer_template
 
 #------------------------------------------------------------------------------------------------------
 # Static variables definitions
@@ -51,24 +50,24 @@ class BlackboardServer(HTTPServer):
 	# We add a value received to the store
 	def add_value_to_store(self, value):
 		# We add the value to the store
-                self.current_key+=1
+		self.current_key+=1
 		self.store[self.current_key]=value
-                return self.store[self.current_key] == value           #If value exists on correct key, return true
+		return self.store[self.current_key] == value           #If value exists on correct key, return True
 
 #------------------------------------------------------------------------------------------------------
 	# We modify a value received in the store
 	def modify_value_in_store(self,key,value):
-		if self.store[key]:					#If Key exists
+		if key in self.store:								#If Key exists
 			self.store[key] = value                         #update key value to value
-                        return self.store[key] == value                 #return true if key has succesfully been modified
-                return false                                            #return false if key does not exist
+			return self.store[key] == value					#return True if key has succesfully been modified
+		return False                                        #return False if key does not exist
 #------------------------------------------------------------------------------------------------------
 	# We delete a value received from the store
 	def delete_value_in_store(self,key):
-		if self.store[key]:					#if key exists
-			del self.store[key]				#delete entry
-                        return false if key in post_data else true      #If there exist no entry for key, return true
-		return false                                            #return false if key does not exist
+		if key in self.store:					#if key exists
+			del self.store[key]					#delete entry
+        	return True
+		return False                            #return False if key does not exist
 #------------------------------------------------------------------------------------------------------
 # Contact a specific vessel with a set of variables to transmit to it
 	def contact_vessel(self, vessel_ip, path, action, key, value):
@@ -161,8 +160,7 @@ class BlackboardRequestHandler(BaseHTTPRequestHandler):
 #Implement /board
 #Implement /entry/entryID
 	def do_GET_path(self):
-		path = self.path[0:-1]		#Remove first /
-		path = path.split('/')
+		path = self.path[1::].split('/')
 		if path[0] == 'board':
 			self.do_GET_board()
 		elif path[0] == 'entry' and len(path) > 1:
@@ -255,14 +253,13 @@ class BlackboardRequestHandler(BaseHTTPRequestHandler):
 #Implement POST /entries					#Add a new entry
 #Implement POST /entries/entryID			#Delete an entry
 	def do_POST_path(self):
-		path = self.path[0:-1]		#Remove first /
-		path = path.split('/')
-		if path[0] == 'entries' and len(path) < 2:
+		path = self.path[1::].split('/')
+		if path[0] == 'board' and len(path) < 2:
 			self.do_POST_add_entry()
 		elif path[0] == 'entries' and len(path) > 1:
 			self.do_POST_modify_entry(path[1])
 		else:
-			self.do_GET_Index()		#Unknown path, route user to index
+			return
 #------------------------------------------------------------------------------------------------------
 	'''
 	Adds a new entry
@@ -272,10 +269,10 @@ class BlackboardRequestHandler(BaseHTTPRequestHandler):
 	def do_POST_add_entry(self):
 		post_data = self.parse_POST_request()
 		text = post_data["entry"][0] if "entry" in post_data else None
-		status_code = 200 if text != None and self.server.add_value_to_store(text) else 400
-		self.set_HTTP_headers(status_code)
-		return status_code
-
+		if text != None and self.server.add_value_to_store(text):
+			self.send_response(200)
+		else:
+			self.send_error(400, "Value was not added.")
 
 #------------------------------------------------------------------------------------------------------
 	'''
@@ -283,20 +280,17 @@ class BlackboardRequestHandler(BaseHTTPRequestHandler):
 	@args:
 	@return: Status code
 	'''
-	def do_POST_modify_entry(self):
+	def do_POST_modify_entry(self, entryID):
 		post_data = self.parse_POST_request()
 		delete = post_data["delete"] if "delete" in post_data else None
 		if delete == None:
 			status_code = 400
-		elif post_data["delete"] == ["1"]:
-			return self.do_POST_delete_entry()
+		elif delete[0] == '1':
+			status_code = self.do_POST_delete_entry(int(entryID))
 		else:
-			id = self.get_path_list()[-1]
 			entry = post_data["entry"] if "entry" in post_data else None
-			status_code = 200 if self.server.modify_value_in_store(id, entry) else 400
-
-		self.set_HTTP_headers(status_code)
-		return status_code
+			status_code = 200 if self.server.modify_value_in_store(int(entryID), entry[0]) else 400
+		self.send_response(status_code)
 
 #------------------------------------------------------------------------------------------------------
 	'''
@@ -304,11 +298,8 @@ class BlackboardRequestHandler(BaseHTTPRequestHandler):
 	@args: none
 	@return: Status code
 	'''
-	def do_POST_delete_entry(self):
-		id = self.get_path_list()[-1]
-		status_code = 200 if id != None and self.server.delete_value_in_store(id, entry) else 400
-
-		self.set_HTTP_headers(status_code)
+	def do_POST_delete_entry(self, entryID):
+		status_code = 200 if entryID != None and self.server.delete_value_in_store(entryID) else 400
 		return status_code
 #------------------------------------------------------------------------------------------------------
 
