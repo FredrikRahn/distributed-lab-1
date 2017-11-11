@@ -221,6 +221,9 @@ class BlackboardRequestHandler(BaseHTTPRequestHandler):
             return self.path[1::].split('/')
 
 
+        def get_path_list(self):
+                return self.path[1::].split('/')
+
 #------------------------------------------------------------------------------------------------------
 # Request handling - POST
 #------------------------------------------------------------------------------------------------------
@@ -263,7 +266,6 @@ class BlackboardRequestHandler(BaseHTTPRequestHandler):
                 text = post_data["entry"][0] if "entry" in post_data else None
 
                 status_code = 200 if text != None and self.server.add_value_to_store(text) else 400
-
                 self.set_HTTP_headers(status_code)
                 return status_code
 
