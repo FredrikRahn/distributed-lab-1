@@ -9,7 +9,7 @@
 # We import various libraries
 from BaseHTTPServer import HTTPServer, BaseHTTPRequestHandler # Socket specifically designed to handle HTTP requests
 import sys # Retrieve arguments
-import urllib2 #Used for opening files
+import os 	#Folder stuff n folders n shit
 from urlparse import parse_qs # Parse POST data
 from httplib import HTTPConnection # Create a HTTP connection, as a client (for POST requests to the other vessels)
 from urllib import urlencode # Encode POST content into the HTTP header
@@ -17,11 +17,14 @@ from codecs import open # Open a file
 from threading import  Thread # Thread Management
 #------------------------------------------------------------------------------------------------------
 
+#Get correct folder path
+file_folder = os.path.dirname(os.path.realpath(__file__)) + '/'
+
 # Global variables for HTML templates
-board_frontpage_header_template = open('board_frontpage_header_template.html', 'r').read()
-boardcontents_template = open('boardcontents_template.html', 'r').read()
-entry_template = open('entry_template.html', 'r').read()
-board_frontpage_footer_template = open('board_frontpage_footer_template.html', 'r').read()
+board_frontpage_header_template = open(file_folder + 'board_frontpage_header_template.html', 'r').read()
+boardcontents_template = open(file_folder + 'boardcontents_template.html', 'r').read()
+entry_template = open(file_folder + 'entry_template.html', 'r').read()
+board_frontpage_footer_template = open(file_folder + 'board_frontpage_footer_template.html', 'r').read()
 
 #------------------------------------------------------------------------------------------------------
 # Static variables definitions
