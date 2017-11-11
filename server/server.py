@@ -234,10 +234,10 @@ class BlackboardRequestHandler(BaseHTTPRequestHandler):
 	@args: entry:text
 	@return: Status code
 	'''
-	def do_POST_modify_entry(self):
-		self.set_HTTP_headers(200)
-		html_reponse = "TEMPORARY SHIET"
-		self.wfile.write(html_response)
+	def do_POST_add_entry(self, text):
+                self.server.store(text)
+                
+
 #------------------------------------------------------------------------------------------------------
 	'''
 	Modifies a specific entry
@@ -245,9 +245,7 @@ class BlackboardRequestHandler(BaseHTTPRequestHandler):
 	@return: Status code
 	'''
 	def do_POST_modify_entry(self):
-		self.set_HTTP_headers(200)
-		html_reponse = "TEMPORARY SHIET"
-		self.wfile.write(html_response)
+
 #------------------------------------------------------------------------------------------------------
 	'''
 	Deletes an entry
@@ -255,9 +253,7 @@ class BlackboardRequestHandler(BaseHTTPRequestHandler):
 	@return: Status code
 	'''
 	def do_POST_delete_entry(self):
-		self.set_HTTP_headers(200)
-		html_reponse = "TEMPORARY SHIET"
-		self.wfile.write(html_response)
+                
 #------------------------------------------------------------------------------------------------------
 
 
