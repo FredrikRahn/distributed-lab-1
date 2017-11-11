@@ -52,23 +52,22 @@ class BlackboardServer(HTTPServer):
 	def add_value_to_store(self, value):
 		# We add the value to the store
 		self.store[++self.current_key]=value
-		pass
+                return self.store[self.current_key] == value           #If value exists on correct key, return true
+                
 #------------------------------------------------------------------------------------------------------
 	# We modify a value received in the store
 	def modify_value_in_store(self,key,value):
 		if self.store[key]:					#If Key exists
-			self.store[key] = value			#update key value to value
-		else:
-			return							#if key doesnt exist, return
-		pass
+			self.store[key] = value                         #update key value to value
+                        return self.store[key] == value                 #return true if key has succesfully been modified
+                return false                                            #return false if key does not exist
 #------------------------------------------------------------------------------------------------------
 	# We delete a value received from the store
 	def delete_value_in_store(self,key):
 		if self.store[key]:					#if key exists
 			del self.store[key]				#delete entry
-		else:
-			return							#if key doesnt exist, return
-		pass
+                        return self.store[key] is None                  #If there exist no entry for key, return true
+		return false                                            #return false if key does not exist
 #------------------------------------------------------------------------------------------------------
 # Contact a specific vessel with a set of variables to transmit to it
 	def contact_vessel(self, vessel_ip, path, action, key, value):
@@ -236,6 +235,9 @@ class BlackboardRequestHandler(BaseHTTPRequestHandler):
 	'''
 	def do_POST_add_entry(self, text):
                 self.server.store(text)
+                status_code = 200
+                self.set_HTTP_headers(status_code)
+                return status_code
                 
 
 #------------------------------------------------------------------------------------------------------
