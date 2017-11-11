@@ -192,6 +192,8 @@ class BlackboardRequestHandler(BaseHTTPRequestHandler):
 
 		self.wfile.write(html_response)
 #------------------------------------------------------------------------------------------------------
+
+#------------------------------------------------------------------------------------------------------
 	'''
 	Lists all available entries
 	@args:
@@ -214,6 +216,11 @@ class BlackboardRequestHandler(BaseHTTPRequestHandler):
                 #Return found entry if it exists, or return empty string if no such entry was found
                 return entry_template %("entries/" + entryId, entryId, entryValue) if entryValue != None else ""
 
+
+    def get_path_list(self):
+            return self.path[1::].split('/')
+
+
 #------------------------------------------------------------------------------------------------------
 # Request handling - POST
 #------------------------------------------------------------------------------------------------------
@@ -222,6 +229,12 @@ class BlackboardRequestHandler(BaseHTTPRequestHandler):
 		# Here, we should check which path was requested and call the right logic based on it
 		# We should also parse the data received
 		# and set the headers for the client
+
+        endpoint = self.get_path_list()[0]
+        if endpoint == "board":
+                self.do_POST_add_entry()
+        else:
+                self.send_error(400)
 
 		# If we want to retransmit what we received to the other vessels
 		retransmit = False # Like this, we will just create infinite loops!
@@ -247,7 +260,7 @@ class BlackboardRequestHandler(BaseHTTPRequestHandler):
 	'''
 	def do_POST_add_entry(self):
                 post_data = self.parse_POST_request()
-                text = post_data["entry"] if "entry" in post_data else None
+                text = post_data["entry"][0] if "entry" in post_data else None
 
                 status_code = 200 if text != None and self.server.add_value_to_store(text) else 400
 
