@@ -175,12 +175,12 @@ class BlackboardRequestHandler(BaseHTTPRequestHandler):
 		fetch_index_footer = board_frontpage_footer_template
 
 		# We should do some real HTML here
-		html_reponse = fetch_index_header + fetch_index_contents + fetch_index_entries + fetch_index_footer
+		html_response = fetch_index_header + fetch_index_contents + fetch_index_entries + fetch_index_footer
 		#In practice, go over the entries list,
 		#produce the boardcontents part,
 		#then construct the full page by combining all the parts ...
 
-		self.wfile.write(html_reponse)
+		self.wfile.write(html_response)
 #------------------------------------------------------------------------------------------------------
 	'''
 	Lists all available entries
