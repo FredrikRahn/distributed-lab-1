@@ -164,8 +164,8 @@ class BlackboardRequestHandler(BaseHTTPRequestHandler):
 		path = self.path[0:-1]		#Remove first /
 		path = path.split('/')
 		if path[0] == 'board':
-			self.do_GET_Index()
-		elif path[0] == 'entry' and path[1] != None:
+			self.do_GET_board()
+		elif path[0] == 'entry' and len(path) > 1:
 			self.do_GET_entry(path[1])
 		else:
 			self.do_GET_Index()		#Unknown path, route user to index
@@ -180,7 +180,7 @@ class BlackboardRequestHandler(BaseHTTPRequestHandler):
 		self.set_HTTP_headers(200)
 
 		fetch_index_header = board_frontpage_header_template
-            	fetch_index_contents = boardcontents_template % ("Title", self.do_GET_all_entries())
+		fetch_index_contents = self.board_helper()
 		fetch_index_footer = board_frontpage_footer_template
 
 		# We should do some real HTML here
@@ -193,120 +193,123 @@ class BlackboardRequestHandler(BaseHTTPRequestHandler):
 #------------------------------------------------------------------------------------------------------
 
 #------------------------------------------------------------------------------------------------------
-	'''
-	Lists all available entries
-	@args:
-	@return: List of entries
-	'''
-	def do_GET_all_entries(self):
-                fetch_index_entries = ""
-                for entryId, entryValue in self.server.store.items():
-                        fetch_index_entries += entry_template %("entries/" + str(entryId), entryId, entryValue)
-                return fetch_index_entries
+'''
+Helper func for fetching board contents
+@args:
+@return: List of entries
+'''
+def board_helper(self):
+	fetch_index_entries = ""
+	for entryId, entryValue in self.server.store.items():
+		fetch_index_entries += entry_template %("entries/" + str(entryId), entryId, entryValue)
+		boardcontents = boardcontents_template % ("Title", fetch_index_entries)
+	return boardcontents
 #------------------------------------------------------------------------------------------------------
-	'''
-	Retrieve entry
-	@args:
-	@return: Entry:html
-	'''
-	def do_GET_entry(entryID):							#Fetch specific entry
-                #Find the specific value for the entry, if entry does not exist set value to None
-                entryValue = self.server.store[entryId] if entryId in self.server.store else None
-                #Return found entry if it exists, or return empty string if no such entry was found
-                return entry_template %("entries/" + entryId, entryId, entryValue) if entryValue != None else ""
+'''
+Fetches board
+@args:
+@return: Board
+'''
+def do_GET_board(self):
+	self.set_HTTP_headers(200)
+	html_response = self.board_helper()
+	self.wfile.write(html_response)
 
-
-    def get_path_list(self):
-            return self.path[1::].split('/')
+#------------------------------------------------------------------------------------------------------
+'''
+Retrieve entry
+@args:
+@return: Entry:html
+'''
+def do_GET_entry(entryID):
+	#Find the specific value for the entry, if entry does not exist set value to None
+	entryValue = self.server.store[entryId] if entryId in self.server.store else None
+	#Return found entry if it exists, or return empty string if no such entry was found
+	return entry_template %("entries/" + entryId, entryId, entryValue) if entryValue != None else ""
 
 #------------------------------------------------------------------------------------------------------
 # Request handling - POST
 #------------------------------------------------------------------------------------------------------
-	def do_POST(self):
-		print("Receiving a POST on %s" % self.path)
-		# Here, we should check which path was requested and call the right logic based on it
-		# We should also parse the data received
-		# and set the headers for the client
+def do_POST(self):
+	print("Receiving a POST on %s" % self.path)
+	# Here, we should check which path was requested and call the right logic based on it
+	# We should also parse the data received
+	# and set the headers for the client
 
-        endpoint = self.get_path_list()[0]
-        if endpoint == "board":
-                self.do_POST_add_entry()
-        else:
-                self.send_error(400)
+	self.do_POST_path()			#Call router for pathing
 
-		# If we want to retransmit what we received to the other vessels
-		retransmit = False # Like this, we will just create infinite loops!
-		if retransmit:
-			# do_POST send the message only when the function finishes
-			# We must then create threads if we want to do some heavy computation
-			#
-			# Random content
-			thread = Thread(target=self.server.propagate_value_to_vessels,args=("action", "key", "value") )
-			# We kill the process if we kill the server
-			thread.daemon = True
-			# We start the thread
-			thread.start()
+	# If we want to retransmit what we received to the other vessels
+	retransmit = False # Like this, we will just create infinite loops!
+	if retransmit:
+		# do_POST send the message only when the function finishes
+		# We must then create threads if we want to do some heavy computation
+		#
+		# Random content
+		thread = Thread(target=self.server.propagate_value_to_vessels,args=("action", "key", "value") )
+		# We kill the process if we kill the server
+		thread.daemon = True
+		# We start the thread
+		thread.start()
 #------------------------------------------------------------------------------------------------------
 # POST Logic
 #Implement POST /entries					#Add a new entry
 #Implement POST /entries/entryID			#Delete an entry
-	def do_POST_path(self):
-		path = self.path[0:-1]		#Remove first /
-		path = path.split('/')
-		if path[0] == 'entries':
-			self.do_POST_add_entry()
-		elif path[0] == 'entries' and path[1] != None:
-			self.do_GET_entry(path[1])
-		else:
-			self.do_GET_Index()		#Unknown path, route user to index
+def do_POST_path(self):
+	path = self.path[0:-1]		#Remove first /
+	path = path.split('/')
+	if path[0] == 'entries' and len(path) < 2:
+		self.do_POST_add_entry()
+	elif path[0] == 'entries' and len(path) > 1:
+		self.do_POST_modify_entry(path[1])
+	else:
+		self.do_GET_Index()		#Unknown path, route user to index
 #------------------------------------------------------------------------------------------------------
-	'''
-	Adds a new entry
-	@args:
-	@return: Status code
-	'''
-	def do_POST_add_entry(self):
-                post_data = self.parse_POST_request()
-                text = post_data["entry"][0] if "entry" in post_data else None
+'''
+Adds a new entry
+@args:
+@return: Status code
+'''
+def do_POST_add_entry(self):
+	post_data = self.parse_POST_request()
+	text = post_data["entry"][0] if "entry" in post_data else None
+	status_code = 200 if text != None and self.server.add_value_to_store(text) else 400
+	self.set_HTTP_headers(status_code)
+	return status_code
 
-                status_code = 200 if text != None and self.server.add_value_to_store(text) else 400
-                self.set_HTTP_headers(status_code)
-                return status_code
-
-
-#------------------------------------------------------------------------------------------------------
-	'''
-	Modifies a specific entry
-	@args:
-	@return: Status code
-	'''
-	def do_POST_modify_entry(self):
-                post_data = self.parse_POST_request()
-                delete = post_data["delete"] if "delete" in post_data else None
-                if delete == None:
-                        status_code = 400
-                elif post_data["delete"] == ["1"]:
-                        return self.do_POST_delete_entry()
-                else:
-                        id = self.get_path_list()[-1]
-                        entry = post_data["entry"] if "entry" in post_data else None
-                        status_code = 200 if self.server.modify_value_in_store(id, entry) else 400
-
-                self.set_HTTP_headers(status_code)
-                return status_code
 
 #------------------------------------------------------------------------------------------------------
-	'''
-	Deletes an entry
-	@args: none
-	@return: Status code
-	'''
-	def do_POST_delete_entry(self):
-                id = self.get_path_list()[-1]
-                status_code = 200 if id != None and self.server.delete_value_in_store(id, entry) else 400
+'''
+Modifies a specific entry
+@args:
+@return: Status code
+'''
+def do_POST_modify_entry(self):
+	post_data = self.parse_POST_request()
+	delete = post_data["delete"] if "delete" in post_data else None
+	if delete == None:
+		status_code = 400
+	elif post_data["delete"] == ["1"]:
+		return self.do_POST_delete_entry()
+	else:
+		id = self.get_path_list()[-1]
+		entry = post_data["entry"] if "entry" in post_data else None
+		status_code = 200 if self.server.modify_value_in_store(id, entry) else 400
 
-                self.set_HTTP_headers(status_code)
-                return status_code
+	self.set_HTTP_headers(status_code)
+	return status_code
+
+#------------------------------------------------------------------------------------------------------
+'''
+Deletes an entry
+@args: none
+@return: Status code
+'''
+def do_POST_delete_entry(self):
+	id = self.get_path_list()[-1]
+	status_code = 200 if id != None and self.server.delete_value_in_store(id, entry) else 400
+
+	self.set_HTTP_headers(status_code)
+	return status_code
 #------------------------------------------------------------------------------------------------------
 
 
