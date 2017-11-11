@@ -66,7 +66,7 @@ class BlackboardServer(HTTPServer):
 	def delete_value_in_store(self,key):
 		if self.store[key]:					#if key exists
 			del self.store[key]				#delete entry
-                        return self.store[key] is None                  #If there exist no entry for key, return true
+                        return false if key in post_data else true      #If there exist no entry for key, return true
 		return false                                            #return false if key does not exist
 #------------------------------------------------------------------------------------------------------
 # Contact a specific vessel with a set of variables to transmit to it
@@ -170,7 +170,9 @@ class BlackboardRequestHandler(BaseHTTPRequestHandler):
 
 		fetch_index_header = board_frontpage_header_template
 		fetch_index_contents = boardcontents_template
-		fetch_index_entries = entry_template
+                fetch_index_entries = ""
+                for entryId, entryValue in self.server.store.items():
+                        fetch_index_entries += entry_template %("entries/" + entryId, entryId, entryValue)
 		fetch_index_footer = board_frontpage_footer_template
 
 		# We should do some real HTML here
@@ -210,7 +212,7 @@ class BlackboardRequestHandler(BaseHTTPRequestHandler):
 		# Here, we should check which path was requested and call the right logic based on it
 		# We should also parse the data received
 		# and set the headers for the client
-
+                
 		# If we want to retransmit what we received to the other vessels
 		retransmit = False # Like this, we will just create infinite loops!
 		if retransmit:
@@ -230,12 +232,15 @@ class BlackboardRequestHandler(BaseHTTPRequestHandler):
 #------------------------------------------------------------------------------------------------------
 	'''
 	Adds a new entry
-	@args: entry:text
+	@args: 
 	@return: Status code
 	'''
-	def do_POST_add_entry(self, text):
-                self.server.store(text)
-                status_code = 200
+	def do_POST_add_entry(self):
+                post_data = self.parse_POST_request()
+                text = post_data["entry"] if "entry" in post_data else None
+
+                status_code = 200 if text != None and self.server.add_value_to_store(text) else 400
+                
                 self.set_HTTP_headers(status_code)
                 return status_code
                 
@@ -243,10 +248,23 @@ class BlackboardRequestHandler(BaseHTTPRequestHandler):
 #------------------------------------------------------------------------------------------------------
 	'''
 	Modifies a specific entry
-	@args: entry:text
+	@args:
 	@return: Status code
 	'''
 	def do_POST_modify_entry(self):
+                post_data = self.parse_POST_request()
+                delete = post_data["delete"] if "delete" in post_data else None
+                if delete == None:
+                        status_code = 400
+                elif post_data["delete"] == ["1"]:
+                        return self.do_POST_delete_entry()
+                else:
+                        id = self.get_path_list()[-1]
+                        entry = post_data["entry"] if "entry" in post_data else None
+                        status_code = 200 if self.server.modify_value_in_store(id, entry) else 400
+
+                self.set_HTTP_headers(status_code)
+                return status_code
 
 #------------------------------------------------------------------------------------------------------
 	'''
@@ -255,7 +273,14 @@ class BlackboardRequestHandler(BaseHTTPRequestHandler):
 	@return: Status code
 	'''
 	def do_POST_delete_entry(self):
-                
+                id = self.get_path_list()[-1]
+                status_code = 200 if id != None and self.server.delete_value_in_store(id, entry) else 400
+
+                self.set_HTTP_headers(status_code)
+                return status_code
+
+        def get_path_list(self):
+                return self.path.split('/')
 #------------------------------------------------------------------------------------------------------
 
 
