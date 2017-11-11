@@ -155,20 +155,20 @@ class BlackboardRequestHandler(BaseHTTPRequestHandler):
 	def do_GET(self):
 		print("Receiving a GET on path %s" % self.path)
 		# Here, we should check which path was requested and call the right logic based on it
-		self.do_GET_Index()
+		self.do_GET_path()
 #------------------------------------------------------------------------------------------------------
 # GET logic - specific path
 #Implement /board
 #Implement /entry/entryID
 	def do_GET_path(self):
-		path = self.path[0:-1]	#Remove first /
+		path = self.path[0:-1]		#Remove first /
 		path = path.split('/')
 		if path[0] == 'board':
-			self.do_GET_all_entries()
-		elif path[0] == 'entry':
+			self.do_GET_Index()
+		elif path[0] == 'entry' and path[1] != None:
 			self.do_GET_entry(path[1])
 		else:
-			return				#unknown path so just return
+			self.do_GET_Index()		#Unknown path, route user to index
 #------------------------------------------------------------------------------------------------------
 	'''
 	View the board's contents
@@ -251,6 +251,15 @@ class BlackboardRequestHandler(BaseHTTPRequestHandler):
 # POST Logic
 #Implement POST /entries					#Add a new entry
 #Implement POST /entries/entryID			#Delete an entry
+	def do_POST_path(self):
+		path = self.path[0:-1]		#Remove first /
+		path = path.split('/')
+		if path[0] == 'entries':
+			self.do_POST_add_entry()
+		elif path[0] == 'entries' and path[1] != None:
+			self.do_GET_entry(path[1])
+		else:
+			self.do_GET_Index()		#Unknown path, route user to index
 #------------------------------------------------------------------------------------------------------
 	'''
 	Adds a new entry
