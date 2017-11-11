@@ -51,7 +51,8 @@ class BlackboardServer(HTTPServer):
 	# We add a value received to the store
 	def add_value_to_store(self, value):
 		# We add the value to the store
-		self.store[++self.current_key]=value
+                self.current_key+=1
+		self.store[self.current_key]=value
                 return self.store[self.current_key] == value           #If value exists on correct key, return true
                 
 #------------------------------------------------------------------------------------------------------
@@ -158,6 +159,7 @@ class BlackboardRequestHandler(BaseHTTPRequestHandler):
 #------------------------------------------------------------------------------------------------------
 # GET logic - specific path
 #Implement /board
+#Implement /entry/entryID
 #------------------------------------------------------------------------------------------------------
 	'''
 	View the board's contents
@@ -170,9 +172,7 @@ class BlackboardRequestHandler(BaseHTTPRequestHandler):
 
 		fetch_index_header = board_frontpage_header_template
 		fetch_index_contents = boardcontents_template
-                fetch_index_entries = ""
-                for entryId, entryValue in self.server.store.items():
-                        fetch_index_entries += entry_template %("entries/" + entryId, entryId, entryValue)
+                fetch_index_entries = self.do_GET_all_entries()
 		fetch_index_footer = board_frontpage_footer_template
 
 		# We should do some real HTML here
@@ -189,11 +189,10 @@ class BlackboardRequestHandler(BaseHTTPRequestHandler):
 	@return: List of entries
 	'''
 	def do_GET_all_entries(self):
-		# We set the response status code to 200 (OK)
-		self.set_HTTP_headers(200)
-		#Add temp entry to store to check if it works
-		self.server.store['ENTRY-OF-DESTINY-ID']="The entry of destinys ninth dragon of the eleventh sin"
-		return self.server.store.items()
+                fetch_index_entries = ""
+                for entryId, entryValue in self.server.store.items():
+                        fetch_index_entries += entry_template %("entries/" + str(entryId), entryId, entryValue)
+                return fetch_index_entries
 #------------------------------------------------------------------------------------------------------
 	'''
 	Retrieve entry
@@ -201,9 +200,16 @@ class BlackboardRequestHandler(BaseHTTPRequestHandler):
 	@return: Entry:html
 	'''
 	def do_GET_entry(self):							#Fetch specific entry
-		self.set_HTTP_headers(200)
-		html_reponse = "TEMPORARY SHIET"
-		self.wfile.write(html_response)
+                #Entry ID is the last element in the path list
+                entryId = self.get_path_list()[-1]
+                #Find the specific value for the entry, if entry does not exist set value to None
+                entryValue = self.server.store[entryId] if entryId in self.server.store else None
+                #Return found entry if it exists, or return empty string if no such entry was found
+                return entry_template %("entries/" + entryId, entryId, entryValue) if entryCalue != None else ""
+
+        def get_path_list(self):
+                return self.path.split('/')
+	        
 #------------------------------------------------------------------------------------------------------
 # Request handling - POST
 #------------------------------------------------------------------------------------------------------
@@ -278,9 +284,6 @@ class BlackboardRequestHandler(BaseHTTPRequestHandler):
 
                 self.set_HTTP_headers(status_code)
                 return status_code
-
-        def get_path_list(self):
-                return self.path.split('/')
 #------------------------------------------------------------------------------------------------------
 
 
