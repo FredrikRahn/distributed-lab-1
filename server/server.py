@@ -180,8 +180,7 @@ class BlackboardRequestHandler(BaseHTTPRequestHandler):
 		self.set_HTTP_headers(200)
 
 		fetch_index_header = board_frontpage_header_template
-		fetch_index_contents = boardcontents_template
-        fetch_index_entries = self.do_GET_all_entries()
+            	fetch_index_contents = boardcontents_template % ("Title", self.do_GET_all_entries())
 		fetch_index_footer = board_frontpage_footer_template
 
 		# We should do some real HTML here
