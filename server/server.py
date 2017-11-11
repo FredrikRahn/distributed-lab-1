@@ -220,10 +220,6 @@ class BlackboardRequestHandler(BaseHTTPRequestHandler):
     def get_path_list(self):
             return self.path[1::].split('/')
 
-
-        def get_path_list(self):
-                return self.path[1::].split('/')
-
 #------------------------------------------------------------------------------------------------------
 # Request handling - POST
 #------------------------------------------------------------------------------------------------------
