@@ -306,14 +306,14 @@ class BlackboardRequestHandler(BaseHTTPRequestHandler):
 		self.do_POST_path()			#Call router for pathing
 
 		# If we want to retransmit what we received to the other vessels
-		retransmit = False # Like this, we will just create infinite loops!
+		retransmit = True # Like this, we will just create infinite loops!
 		if retransmit:
 			# do_POST send the message only when the function finishes
 			# We must then create threads if we want to do some heavy computation
 			#
 			# Random content
-			thread = Thread(target=self.server.propagate_value_to_vessels,args=("action", "key", "value") )
-			# We kill the process if we kill the server
+			thread = Thread(target=self.server.propagate_value_to_vessels,args=("action", "key", "value"))
+			# We kill the process if we kill the serverx
 			thread.daemon = True
 			# We start the thread
 			thread.start()
