@@ -97,7 +97,7 @@ class BlackboardServer(HTTPServer):
 		return False                            #return False if key does not exist
 #------------------------------------------------------------------------------------------------------
 # Contact a specific vessel with a set of variables to transmit to it
-	def contact_vessel(self, vessel_ip, path, action, key, value):
+	def contact_vessel(self, vessel_ip, path, action, key, value, should_propagate):
 		'''
 		Handles contact with specific vessel
 		@args:	Vessel_ip:String, IP to the vessel
@@ -150,11 +150,11 @@ class BlackboardServer(HTTPServer):
 		'''
 		# We iterate through the vessel list
 		for vessel in self.vessels:
-			# We should not send it to our own IP, or we would create an infinite loop of updates
+		# We should not send it to our own IP, or we would create an infinite loop of updates
 			if vessel != ("10.1.0.%s" % self.vessel_id):
 				# A good practice would be to try again if the request failed
 				# Here, we do it only once
-				self.contact_vessel(vessel, path, action, key, value)
+				self.contact_vessel(vessel, path, action, key, value, should_propagate)
 #------------------------------------------------------------------------------------------------------
 
 
@@ -303,35 +303,38 @@ class BlackboardRequestHandler(BaseHTTPRequestHandler):
 		# We should also parse the data received
 		# and set the headers for the client
 
-		self.do_POST_path()			#Call router for pathing
+		propagate_values = self.do_POST_path()			#Call router for pathing
 
-		# If we want to retransmit what we received to the other vessels
-		retransmit = True # Like this, we will just create infinite loops!
-		if retransmit:
-			# do_POST send the message only when the function finishes
-			# We must then create threads if we want to do some heavy computation
-			#
 			# Random content
-			thread = Thread(target=self.server.propagate_value_to_vessels,args=("action", "key", "value"))
+			print(propagate_values)
+			thread = Thread(target=self.server.propagate_value_to_vessels,args=(self.path, propagate_values[0],
+				propagate_values[1], propagate_values[2]))
 			# We kill the process if we kill the serverx
 			thread.daemon = True
 			# We start the thread
 			thread.start()
+		# If we want to retransmit what we received to the other vessels
+	 	#TODO: ADD BOOLEAN FLAG FOR RETRANSMISSIONS
+		# do_POST send the message only when the function finishes
+		# We must then create threads if we want to do some heavy computation
+		#
+
 #------------------------------------------------------------------------------------------------------
 # POST Logic
 #Implement POST /entries					#Add a new entry
 #Implement POST /entries/entryID			#Delete an entry
+#Implement POST /no_propagate			        #Propagate changes
 	def do_POST_path(self):
 		'''
 		Handles POST request routing
 		@args:
-		@return:
+		@return:[Action:Text, Key:Number, Value:Any]
 		'''
 		path = self.path[1::].split('/')
 		if path[0] == 'board' and len(path) < 2:
-			self.do_POST_add_entry()
+			return ["Add", self.server.current_key, self.do_POST_add_entry(), self.server.vessel_id]
 		elif path[0] == 'entries' and len(path) > 1:
-			self.do_POST_modify_entry(path[1])
+			return ["Modify", path[1], self.do_POST_modify_entry(path[1]), self.server.vessel_id]
 		else:
 			pass
 #------------------------------------------------------------------------------------------------------
@@ -342,9 +345,10 @@ class BlackboardRequestHandler(BaseHTTPRequestHandler):
 		@return: Status code
 		'''
 		post_data = self.parse_POST_request()
-		text = post_data["entry"][0] if "entry" in post_data else None
-		if text != None and self.server.add_value_to_store(text):
+		entry = post_data["entry"][0] if "entry" in post_data else None
+		if entry != None and self.server.add_value_to_store(entry):
 			self.send_response(200)
+			return entry
 		else:
 			self.send_error(400, "Value was not added.")
 
@@ -361,11 +365,13 @@ class BlackboardRequestHandler(BaseHTTPRequestHandler):
 			status_code = 400
 		elif delete[0] == '1':
 			status_code = self.do_POST_delete_entry(int(entryID))
+			entry = None
 		else:
-			entry = post_data["entry"] if "entry" in post_data else None
+			entry = post_data["entry"][0] if "entry" in post_data else None
 			status_code = 200 if self.server.modify_value_in_store(int(entryID), entry[0]) else 400
 		self.send_response(status_code)
-
+		return entry
+	
 #------------------------------------------------------------------------------------------------------
 	def do_POST_delete_entry(self, entryID):
 		'''
@@ -375,13 +381,7 @@ class BlackboardRequestHandler(BaseHTTPRequestHandler):
 		'''
 		status_code = 200 if entryID != None and self.server.delete_value_in_store(entryID) else 400
 		return status_code
-#------------------------------------------------------------------------------------------------------
 
-
-
-
-
-#------------------------------------------------------------------------------------------------------
 #------------------------------------------------------------------------------------------------------
 # Execute the code
 if __name__ == '__main__':
