@@ -16,25 +16,16 @@ from urllib import urlencode # Encode POST content into the HTTP header
 from codecs import open # Open a file
 from threading import  Thread # Thread Management
 #------------------------------------------------------------------------------------------------------
-
 #Get correct folder path
 file_folder = os.path.dirname(os.path.realpath(__file__)) + '/'
-
 # Global variables for HTML templates
 board_frontpage_header_template = open(file_folder + 'board_frontpage_header_template.html', 'r').read()
 boardcontents_template = open(file_folder + 'boardcontents_template.html', 'r').read()
 entry_template = open(file_folder + 'entry_template.html', 'r').read()
 board_frontpage_footer_template = open(file_folder + 'board_frontpage_footer_template.html', 'r').read()
-
 #------------------------------------------------------------------------------------------------------
 # Static variables definitions
 PORT_NUMBER = 80
-#------------------------------------------------------------------------------------------------------
-
-
-
-
-#------------------------------------------------------------------------------------------------------
 #------------------------------------------------------------------------------------------------------
 class BlackboardServer(HTTPServer):
 #------------------------------------------------------------------------------------------------------
@@ -42,9 +33,9 @@ class BlackboardServer(HTTPServer):
 		'''
 		Init of Blackboard HTTP server
 		@args:	server_address:String, Address to Server
-				handler, Server handler
-				node_id:Number, The ID of the node
-				vessel_list, list of vessels
+				handler:BaseHTTPRequestHandler, Server handler
+				node_id:String, The ID of the node
+				vessel_list:[String], list of vessels
 		@return:
 		'''
 		# We call the super init
@@ -62,8 +53,8 @@ class BlackboardServer(HTTPServer):
 	def add_value_to_store(self, value):
 		'''
 		Adds a new value to store
-		@args: Value:Any, Value to be added
-		@return: [key, value]
+		@args: Value:String, Value to be added to store
+		@return: [Key:String, Value:String]
 		'''
 		# We add the value to the store
 		self.current_key += 1
@@ -73,15 +64,14 @@ class BlackboardServer(HTTPServer):
 			return [key, value]
 		else:
 			raise KeyError('Can not add key (Already Exists)')
-
 #------------------------------------------------------------------------------------------------------
 	# We modify a value received in the store
 	def modify_value_in_store(self, key, value):
 		'''
 		Modifies value in store
-		@args:	Key:Number, Key to be modified
-				Value:Any, Value to be added to key
-		@return:
+		@args:	Key:Number, 	Key to be modified
+				Value:String, 	Value to be added to key
+		@return: [Key:String, Value:String]
 		'''
 		if key in self.store:								#If Key exists
 			self.store[key] = value                         #update key value to value
@@ -94,7 +84,7 @@ class BlackboardServer(HTTPServer):
 		'''
 		Deletes value in store
 		@args:	Key:Number, Key to be deleted
-		@return:
+		@return: [Key:String]
 		'''
 		if key in self.store:					#if key exists
 			del self.store[key]					#delete entry
@@ -104,12 +94,12 @@ class BlackboardServer(HTTPServer):
 	def contact_vessel(self, vessel_ip, path, action, key, value):
 		'''
 		Handles contact with specific vessel
-		@args:	Vessel_ip:String, IP to the vessel
-				Path:String, Path to vessel
-				Action:Any, Action to be performed
-				Key:Number, Key for store
-				Value:Any, Value for store
-		@return: Entire page:html
+		@args:	Vessel_ip:String, 	IP to the vessel
+				Path:String, 		The path where the request will be sent
+				Action:Any, 		Action to be performed
+				Key:String, 		Key for store
+				Value:String, 		Value for store
+		@return:Entire page:html
 		'''
 		# the Boolean variable we will return
 		success = False
@@ -146,10 +136,10 @@ class BlackboardServer(HTTPServer):
 	def propagate_value_to_vessels(self, path, action, key, value):
 		'''
 		Handles propagation of requests to vessels
-		@args:	Path,	Path to vessel
-				Action, Action to perform
-				Key:Number, Key for store
-				Value:Any, Value for store
+		@args:	Path:String,	The path where the request will be sent
+				Action:String, 	The action that should be performed by the other vessels
+				Key:String, 	Key that should be used in action
+				Value:String, 	Value corresponding to key
 		@return:
 		'''
 		print(self.vessels)
@@ -170,9 +160,8 @@ class BlackboardRequestHandler(BaseHTTPRequestHandler):
 	# We fill the HTTP headers
 	def set_HTTP_headers(self, status_code = 200):
 		'''
-		Sets HTTP headers
+		Sets HTTP headers and status code of the response
 		@args: Status_code, status code to put in header
-		@return:
 		'''
 		 # We set the response status code (200 if OK, something else otherwise)
 		self.send_response(status_code)
@@ -186,7 +175,7 @@ class BlackboardRequestHandler(BaseHTTPRequestHandler):
 		'''
 		Parses POST requests
 		@args:
-		@return:
+		@return: post_data:Dict returns dictionary of URL-encoded data
 		'''
 		post_data = ""
 		# We need to parse the response, so we must know the length of the content
@@ -195,17 +184,12 @@ class BlackboardRequestHandler(BaseHTTPRequestHandler):
 		post_data = parse_qs(self.rfile.read(length), keep_blank_values=1)
 		# we return the data
 		return post_data
-
 #------------------------------------------------------------------------------------------------------
 # Request handling - GET
 #------------------------------------------------------------------------------------------------------
-	# This function contains the logic executed when this server receives a GET request
-	# This function is called AUTOMATICALLY upon reception and is executed as a thread!
 	def do_GET(self):
 		'''
-		Handles GET request routing
-		@args:
-		@return:
+		Handles incoming GET requests and routes them accordingly
 		'''
 		print("Receiving a GET on path %s" % self.path)
 		path = self.path[1::].split('/')
@@ -222,8 +206,7 @@ class BlackboardRequestHandler(BaseHTTPRequestHandler):
 #------------------------------------------------------------------------------------------------------
 	def do_GET_Index(self):
 		'''
-		Fetches entire page
-		@args:
+		Fetches the Index page and all contents to be displayed
 		@return: Entire page:html
 		'''
 		# We set the response status code to 200 (OK)
@@ -240,8 +223,7 @@ class BlackboardRequestHandler(BaseHTTPRequestHandler):
 	def board_helper(self):
 		'''
 		Helper func for fetching board contents
-		@args:
-		@return: List of entries
+		@return: List of boardcontents
 		'''
 		fetch_index_entries = ""
 		for entryId, entryValue in self.server.store.items():
@@ -251,33 +233,28 @@ class BlackboardRequestHandler(BaseHTTPRequestHandler):
 #------------------------------------------------------------------------------------------------------
 	def do_GET_board(self):
 		'''
-		Fetches the board
-		@args:
-		@return: Board:html
+		Fetches the board and its contents
 		'''
 		self.set_HTTP_headers(200)
 		html_response = self.board_helper()
 		self.wfile.write(html_response)
 #------------------------------------------------------------------------------------------------------
-	def do_GET_entry(entryID):
+	def do_GET_entry(self, entryID):
 		'''
-		Retrieve entry
-		@args:
+		Retrieve an entry from store and inserts it into the entry_template
+		@args: entryID:String, ID of entry to be retrieved
 		@return: Entry:html
 		'''
 		#Find the specific value for the entry, if entry does not exist set value to None
 		entryValue = self.server.store[entryId] if entryId in self.server.store else None
 		#Return found entry if it exists, or return empty string if no such entry was found
 		return entry_template %("entries/" + entryId, entryId, entryValue) if entryValue != None else ""
-
 #------------------------------------------------------------------------------------------------------
 # Request handling - POST
 #------------------------------------------------------------------------------------------------------
 	def do_POST(self):
 		'''
-		Handles POST requests
-		@args:
-		@return:
+		Handles incoming POST requests and routes them accordingly
 		'''
 		print("Receiving a POST on %s" % self.path)
 		path = self.path[1::].split('/')
@@ -287,9 +264,11 @@ class BlackboardRequestHandler(BaseHTTPRequestHandler):
 			self.do_POST_entries(path[1])
 		elif path[0] == 'propagate':
 			self.do_POST_propagate()
-
 #------------------------------------------------------------------------------------------------------
 	def do_POST_board(self):
+		'''
+		Add entries to board
+		'''
 		post_data = self.parse_POST_request()
 		if 'entry' in post_data:
 			value = post_data['entry'][0]
@@ -299,6 +278,10 @@ class BlackboardRequestHandler(BaseHTTPRequestHandler):
 			self.send_error(400, 'Error adding entry to board')
 #------------------------------------------------------------------------------------------------------
 	def do_POST_entries(self, entryID):
+		'''
+		Handles deleting and modifying entries to the board
+		@args: entryID:String, ID of entry to be modified/deleted
+		'''
 		post_data = self.parse_POST_request()
 		if 'delete' in post_data:
 			delete = post_data['delete'][0]
@@ -313,12 +296,15 @@ class BlackboardRequestHandler(BaseHTTPRequestHandler):
 			self.send_error(400, 'Delete flag missing from request')
 #------------------------------------------------------------------------------------------------------
 	def do_POST_propagate(self):
+		'''
+		Handles propagation of actions by
+		routing them to the correct functions
+		'''
 		post_data = self.parse_POST_request()
 		if 'action' in post_data:
 			action = post_data['action'][0]
 			value = post_data['value'][0]
 			key = post_data['key'][0]
-			print('action, value, key', action, value, key)
 			if action == 'add':
 				self.do_POST_add_entry(value)
 			elif action == 'modify':
@@ -328,25 +314,25 @@ class BlackboardRequestHandler(BaseHTTPRequestHandler):
 			else:
 				self.send_error(400, 'Invalid action')
 #------------------------------------------------------------------------------------------------------
-	def do_POST_add_entry(self, entry):
+	def do_POST_add_entry(self, value):
 		'''
 		Adds a new entry to store
-		@args:
-		@return:
+		@args: value:Value, Value to be added in store
+		@return: entry:List, [key, value]
 		'''
-		entry = self.server.add_value_to_store(value=entry)
+		entry = self.server.add_value_to_store(value=value)
 		if entry:
 			self.send_response(200)
 			return entry
 		else:
 			self.send_error(400, "Value was not added.")
-
 #------------------------------------------------------------------------------------------------------
 	def do_POST_modify_entry(self, entryID, value):
 		'''
 		Modifies a specific entry in store
-		@args:
-		@return:
+		@args: entryID:String, ID of entry to be modified
+		@args: value:String, new value to be assigned to entryID
+		@return: entry:List, [key, value]
 		'''
 		entry = self.server.modify_value_in_store(int(entryID), value)
 		if entry:
@@ -354,13 +340,12 @@ class BlackboardRequestHandler(BaseHTTPRequestHandler):
 			return entry
 		else:
 			 self.send_error(400, 'Entry not modified')
-
 #------------------------------------------------------------------------------------------------------
 	def do_POST_delete_entry(self, entryID):
 		'''
 		Deletes an entry in store
-		@args:
-		@return:
+		@args: entryID:String
+		@return: entry:List, [key]
 		'''
 		entry = self.server.delete_value_in_store(int(entryID))
 		if entry and entryID != None:
@@ -370,6 +355,12 @@ class BlackboardRequestHandler(BaseHTTPRequestHandler):
 			 self.send_error(400, 'Entry not deleted')
 #------------------------------------------------------------------------------------------------------
 	def propagate_action(self, action, key='', value=''):
+		'''
+		Spawns a thread and propagates an action to other vessels
+		@args: action:String
+		@args: key:String
+		@args: value:String
+		'''
 		propagate_path = '/propagate'
 		print('path, action, key, value', propagate_path, action, key, value)
 		thread = Thread(target=self.server.propagate_value_to_vessels, args=(propagate_path, action, key, value))
