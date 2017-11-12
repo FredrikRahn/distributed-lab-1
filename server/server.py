@@ -63,16 +63,20 @@ class BlackboardServer(HTTPServer):
 		'''
 		Adds a new value to store
 		@args: Value:Any, Value to be added
-		@return:
+		@return: [key, value]
 		'''
 		# We add the value to the store
-		self.current_key+=1
-		self.store[self.current_key]=value
-		return self.store[self.current_key] == value           #If value exists on correct key, return True
+		self.current_key += 1
+		key = self.current_key
+		if key not in self.store:
+			self.store[key]=value
+			return [key, value]
+		else:
+			raise KeyError('Can not add key (Already Exists)')
 
 #------------------------------------------------------------------------------------------------------
 	# We modify a value received in the store
-	def modify_value_in_store(self,key,value):
+	def modify_value_in_store(self, key, value):
 		'''
 		Modifies value in store
 		@args:	Key:Number, Key to be modified
@@ -81,8 +85,9 @@ class BlackboardServer(HTTPServer):
 		'''
 		if key in self.store:								#If Key exists
 			self.store[key] = value                         #update key value to value
-			return self.store[key] == value					#return True if key has succesfully been modified
-		return False                                        #return False if key does not exist
+			return [key, value]
+		else:
+			raise KeyError('Key does not exist in store')
 #------------------------------------------------------------------------------------------------------
 	# We delete a value received from the store
 	def delete_value_in_store(self,key):
@@ -93,11 +98,10 @@ class BlackboardServer(HTTPServer):
 		'''
 		if key in self.store:					#if key exists
 			del self.store[key]					#delete entry
-        	return True
-		return False                            #return False if key does not exist
+		return [key]
 #------------------------------------------------------------------------------------------------------
 # Contact a specific vessel with a set of variables to transmit to it
-	def contact_vessel(self, vessel_ip, path, action, key, value, should_propagate):
+	def contact_vessel(self, vessel_ip, path, action, key, value):
 		'''
 		Handles contact with specific vessel
 		@args:	Vessel_ip:String, IP to the vessel
@@ -148,24 +152,16 @@ class BlackboardServer(HTTPServer):
 				Value:Any, Value for store
 		@return:
 		'''
-		# We iterate through the vessel list
+		print(self.vessels)
 		for vessel in self.vessels:
-		# We should not send it to our own IP, or we would create an infinite loop of updates
+			# We should not send it to our own IP, or we would create an infinite loop of updates
 			if vessel != ("10.1.0.%s" % self.vessel_id):
 				# A good practice would be to try again if the request failed
 				# Here, we do it only once
-				self.contact_vessel(vessel, path, action, key, value, should_propagate)
+				self.contact_vessel(vessel, path, action, key, value)
 #------------------------------------------------------------------------------------------------------
 
-
-
-
-
-
-
-#------------------------------------------------------------------------------------------------------
-#------------------------------------------------------------------------------------------------------
-# This class implements the logic when a server receives a GET or POST request
+# This class implements the logic when a server receives a GET or POST
 # It can access to the server data through self.server.*
 # i.e. the store is accessible through self.server.store
 # Attributes of the server are SHARED accross all request hqndling/ threads!
@@ -199,7 +195,7 @@ class BlackboardRequestHandler(BaseHTTPRequestHandler):
 		post_data = parse_qs(self.rfile.read(length), keep_blank_values=1)
 		# we return the data
 		return post_data
-#------------------------------------------------------------------------------------------------------
+
 #------------------------------------------------------------------------------------------------------
 # Request handling - GET
 #------------------------------------------------------------------------------------------------------
@@ -207,23 +203,11 @@ class BlackboardRequestHandler(BaseHTTPRequestHandler):
 	# This function is called AUTOMATICALLY upon reception and is executed as a thread!
 	def do_GET(self):
 		'''
-		Handles GET requests
-		@args:
-		@return:
-		'''
-		print("Receiving a GET on path %s" % self.path)
-		# Here, we should check which path was requested and call the right logic based on it
-		self.do_GET_path()
-#------------------------------------------------------------------------------------------------------
-# GET logic - specific path
-#Implement /board
-#Implement /entry/entryID
-	def do_GET_path(self):
-		'''
 		Handles GET request routing
 		@args:
 		@return:
 		'''
+		print("Receiving a GET on path %s" % self.path)
 		path = self.path[1::].split('/')
 		if path[0] == 'board':
 			self.do_GET_board()
@@ -231,6 +215,10 @@ class BlackboardRequestHandler(BaseHTTPRequestHandler):
 			self.do_GET_entry(path[1])
 		else:
 			self.do_GET_Index()		#Unknown path, route user to index
+#------------------------------------------------------------------------------------------------------
+# GET logic - specific path
+#Implement /board
+#Implement /entry/entryID
 #------------------------------------------------------------------------------------------------------
 	def do_GET_Index(self):
 		'''
@@ -245,15 +233,9 @@ class BlackboardRequestHandler(BaseHTTPRequestHandler):
 		fetch_index_contents = self.board_helper()
 		fetch_index_footer = board_frontpage_footer_template
 
-		# We should do some real HTML here
 		html_response = fetch_index_header + fetch_index_contents + fetch_index_footer
-		#In practice, go over the entries list,
-		#produce the boardcontents part,
-		#then construct the full page by combining all the parts ...
 
 		self.wfile.write(html_response)
-#------------------------------------------------------------------------------------------------------
-
 #------------------------------------------------------------------------------------------------------
 	def board_helper(self):
 		'''
@@ -276,7 +258,6 @@ class BlackboardRequestHandler(BaseHTTPRequestHandler):
 		self.set_HTTP_headers(200)
 		html_response = self.board_helper()
 		self.wfile.write(html_response)
-
 #------------------------------------------------------------------------------------------------------
 	def do_GET_entry(entryID):
 		'''
@@ -299,89 +280,105 @@ class BlackboardRequestHandler(BaseHTTPRequestHandler):
 		@return:
 		'''
 		print("Receiving a POST on %s" % self.path)
-		# Here, we should check which path was requested and call the right logic based on it
-		# We should also parse the data received
-		# and set the headers for the client
-
-		propagate_values = self.do_POST_path()			#Call router for pathing
-
-			# Random content
-			print(propagate_values)
-			thread = Thread(target=self.server.propagate_value_to_vessels,args=(self.path, propagate_values[0],
-				propagate_values[1], propagate_values[2]))
-			# We kill the process if we kill the serverx
-			thread.daemon = True
-			# We start the thread
-			thread.start()
-		# If we want to retransmit what we received to the other vessels
-	 	#TODO: ADD BOOLEAN FLAG FOR RETRANSMISSIONS
-		# do_POST send the message only when the function finishes
-		# We must then create threads if we want to do some heavy computation
-		#
-
-#------------------------------------------------------------------------------------------------------
-# POST Logic
-#Implement POST /entries					#Add a new entry
-#Implement POST /entries/entryID			#Delete an entry
-#Implement POST /no_propagate			        #Propagate changes
-	def do_POST_path(self):
-		'''
-		Handles POST request routing
-		@args:
-		@return:[Action:Text, Key:Number, Value:Any]
-		'''
 		path = self.path[1::].split('/')
 		if path[0] == 'board' and len(path) < 2:
-			return ["Add", self.server.current_key, self.do_POST_add_entry(), self.server.vessel_id]
+			self.do_POST_board()
 		elif path[0] == 'entries' and len(path) > 1:
-			return ["Modify", path[1], self.do_POST_modify_entry(path[1]), self.server.vessel_id]
-		else:
-			pass
+			self.do_POST_entries(path[1])
+		elif path[0] == 'propagate':
+			self.do_POST_propagate()
+
 #------------------------------------------------------------------------------------------------------
-	def do_POST_add_entry(self):
-		'''
-		Adds a new entry
-		@args:
-		@return: Status code
-		'''
+	def do_POST_board(self):
 		post_data = self.parse_POST_request()
-		entry = post_data["entry"][0] if "entry" in post_data else None
-		if entry != None and self.server.add_value_to_store(entry):
+		if 'entry' in post_data:
+			value = post_data['entry'][0]
+			entry = self.do_POST_add_entry(value)
+			self.propagate_action(action='add', key=entry[0], value=entry[1])
+		else:
+			self.send_error(400, 'Error adding entry to board')
+#------------------------------------------------------------------------------------------------------
+	def do_POST_entries(self, entryID):
+		post_data = self.parse_POST_request()
+		if 'delete' in post_data:
+			delete = post_data['delete'][0]
+			if delete == '1':
+				entry = self.do_POST_delete_entry(int(entryID))
+				self.propagate_action(action='delete', key=entry[0])
+			else:
+				modified_value = post_data['entry'][0]
+				entry = self.server.modify_value_in_store(int(entryID), modified_value)
+				self.propagate_action(action='modify', key=entry[0], value=entry[1])
+		else:
+			self.send_error(400, 'Delete flag missing from request')
+#------------------------------------------------------------------------------------------------------
+	def do_POST_propagate(self):
+		post_data = self.parse_POST_request()
+		if 'action' in post_data:
+			action = post_data['action'][0]
+			value = post_data['value'][0]
+			key = post_data['key'][0]
+			print('action, value, key', action, value, key)
+			if action == 'add':
+				self.do_POST_add_entry(value)
+			elif action == 'modify':
+				self.do_POST_modify_entry(key, value)
+			elif action == 'delete':
+				self.do_POST_delete_entry(key)
+			else:
+				self.send_error(400, 'Invalid action')
+#------------------------------------------------------------------------------------------------------
+	def do_POST_add_entry(self, entry):
+		'''
+		Adds a new entry to store
+		@args:
+		@return:
+		'''
+		entry = self.server.add_value_to_store(value=entry)
+		if entry:
 			self.send_response(200)
 			return entry
 		else:
 			self.send_error(400, "Value was not added.")
 
 #------------------------------------------------------------------------------------------------------
-	def do_POST_modify_entry(self, entryID):
+	def do_POST_modify_entry(self, entryID, value):
 		'''
-		Modifies a specific entry
+		Modifies a specific entry in store
 		@args:
-		@return: Status code
+		@return:
 		'''
-		post_data = self.parse_POST_request()
-		delete = post_data["delete"] if "delete" in post_data else None
-		if delete == None:
-			status_code = 400
-		elif delete[0] == '1':
-			status_code = self.do_POST_delete_entry(int(entryID))
-			entry = None
+		entry = self.server.modify_value_in_store(int(entryID), value)
+		if entry:
+			self.send_response(200)
+			return entry
 		else:
-			entry = post_data["entry"][0] if "entry" in post_data else None
-			status_code = 200 if self.server.modify_value_in_store(int(entryID), entry[0]) else 400
-		self.send_response(status_code)
-		return entry
-	
+			 self.send_error(400, 'Entry not modified')
+
 #------------------------------------------------------------------------------------------------------
 	def do_POST_delete_entry(self, entryID):
 		'''
-		Deletes an entry
-		@args: none
-		@return: Status code
+		Deletes an entry in store
+		@args:
+		@return:
 		'''
-		status_code = 200 if entryID != None and self.server.delete_value_in_store(entryID) else 400
-		return status_code
+		entry = self.server.delete_value_in_store(int(entryID))
+		if entry and entryID != None:
+			self.send_response(200)
+			return entry
+		else:
+			 self.send_error(400, 'Entry not deleted')
+#------------------------------------------------------------------------------------------------------
+	def propagate_action(self, action, key='', value=''):
+		propagate_path = '/propagate'
+		print('path, action, key, value', propagate_path, action, key, value)
+		thread = Thread(target=self.server.propagate_value_to_vessels, args=(propagate_path, action, key, value))
+		print('tried to propagate')
 
+		# We kill the process if we kill the serverx
+		thread.daemon = True
+		# We start the thread
+		thread.start()
 #------------------------------------------------------------------------------------------------------
 # Execute the code
 if __name__ == '__main__':
