@@ -3,8 +3,8 @@
 # TDA596 Labs - Server Skeleton
 # server/server.py
 # Input: Node_ID total_number_of_ID
-# Student Group:
-# Student names: John Doe & John Doe
+# Student Group: 99
+# Student names: Fredrik Rahn & Alexander Branzell
 #------------------------------------------------------------------------------------------------------
 # We import various libraries
 from BaseHTTPServer import HTTPServer, BaseHTTPRequestHandler # Socket specifically designed to handle HTTP requests
@@ -39,7 +39,15 @@ PORT_NUMBER = 80
 class BlackboardServer(HTTPServer):
 #------------------------------------------------------------------------------------------------------
 	def __init__(self, server_address, handler, node_id, vessel_list):
-	# We call the super init
+		'''
+		Init of Blackboard HTTP server
+		@args:	server_address:String, Address to Server
+				handler, Server handler
+				node_id:Number, The ID of the node
+				vessel_list, list of vessels
+		@return:
+		'''
+		# We call the super init
 		HTTPServer.__init__(self,server_address, handler)
 		# we create the dictionary of values
 		self.store = {}
@@ -52,6 +60,11 @@ class BlackboardServer(HTTPServer):
 #------------------------------------------------------------------------------------------------------
 	# We add a value received to the store
 	def add_value_to_store(self, value):
+		'''
+		Adds a new value to store
+		@args: Value:Any, Value to be added
+		@return:
+		'''
 		# We add the value to the store
 		self.current_key+=1
 		self.store[self.current_key]=value
@@ -60,6 +73,12 @@ class BlackboardServer(HTTPServer):
 #------------------------------------------------------------------------------------------------------
 	# We modify a value received in the store
 	def modify_value_in_store(self,key,value):
+		'''
+		Modifies value in store
+		@args:	Key:Number, Key to be modified
+				Value:Any, Value to be added to key
+		@return:
+		'''
 		if key in self.store:								#If Key exists
 			self.store[key] = value                         #update key value to value
 			return self.store[key] == value					#return True if key has succesfully been modified
@@ -67,6 +86,11 @@ class BlackboardServer(HTTPServer):
 #------------------------------------------------------------------------------------------------------
 	# We delete a value received from the store
 	def delete_value_in_store(self,key):
+		'''
+		Deletes value in store
+		@args:	Key:Number, Key to be deleted
+		@return:
+		'''
 		if key in self.store:					#if key exists
 			del self.store[key]					#delete entry
         	return True
@@ -74,6 +98,15 @@ class BlackboardServer(HTTPServer):
 #------------------------------------------------------------------------------------------------------
 # Contact a specific vessel with a set of variables to transmit to it
 	def contact_vessel(self, vessel_ip, path, action, key, value):
+		'''
+		Handles contact with specific vessel
+		@args:	Vessel_ip:String, IP to the vessel
+				Path:String, Path to vessel
+				Action:Any, Action to be performed
+				Key:Number, Key for store
+				Value:Any, Value for store
+		@return: Entire page:html
+		'''
 		# the Boolean variable we will return
 		success = False
 		# The variables must be encoded in the URL format, through urllib.urlencode
@@ -107,6 +140,14 @@ class BlackboardServer(HTTPServer):
 #------------------------------------------------------------------------------------------------------
 	# We send a received value to all the other vessels of the system
 	def propagate_value_to_vessels(self, path, action, key, value):
+		'''
+		Handles propagation of requests to vessels
+		@args:	Path,	Path to vessel
+				Action, Action to perform
+				Key:Number, Key for store
+				Value:Any, Value for store
+		@return:
+		'''
 		# We iterate through the vessel list
 		for vessel in self.vessels:
 			# We should not send it to our own IP, or we would create an infinite loop of updates
@@ -132,6 +173,11 @@ class BlackboardRequestHandler(BaseHTTPRequestHandler):
 #------------------------------------------------------------------------------------------------------
 	# We fill the HTTP headers
 	def set_HTTP_headers(self, status_code = 200):
+		'''
+		Sets HTTP headers
+		@args: Status_code, status code to put in header
+		@return:
+		'''
 		 # We set the response status code (200 if OK, something else otherwise)
 		self.send_response(status_code)
 		# We set the content type to HTML
@@ -141,6 +187,11 @@ class BlackboardRequestHandler(BaseHTTPRequestHandler):
 #------------------------------------------------------------------------------------------------------
 	# a POST request must be parsed through urlparse.parse_QS, since the content is URL encoded
 	def parse_POST_request(self):
+		'''
+		Parses POST requests
+		@args:
+		@return:
+		'''
 		post_data = ""
 		# We need to parse the response, so we must know the length of the content
 		length = int(self.headers['Content-Length'])
@@ -155,6 +206,11 @@ class BlackboardRequestHandler(BaseHTTPRequestHandler):
 	# This function contains the logic executed when this server receives a GET request
 	# This function is called AUTOMATICALLY upon reception and is executed as a thread!
 	def do_GET(self):
+		'''
+		Handles GET requests
+		@args:
+		@return:
+		'''
 		print("Receiving a GET on path %s" % self.path)
 		# Here, we should check which path was requested and call the right logic based on it
 		self.do_GET_path()
@@ -163,6 +219,11 @@ class BlackboardRequestHandler(BaseHTTPRequestHandler):
 #Implement /board
 #Implement /entry/entryID
 	def do_GET_path(self):
+		'''
+		Handles GET request routing
+		@args:
+		@return:
+		'''
 		path = self.path[1::].split('/')
 		if path[0] == 'board':
 			self.do_GET_board()
@@ -171,12 +232,12 @@ class BlackboardRequestHandler(BaseHTTPRequestHandler):
 		else:
 			self.do_GET_Index()		#Unknown path, route user to index
 #------------------------------------------------------------------------------------------------------
-	'''
-	View the board's contents
-	@args:
-	@return: Entire page:html
-	'''
 	def do_GET_Index(self):
+		'''
+		Fetches entire page
+		@args:
+		@return: Entire page:html
+		'''
 		# We set the response status code to 200 (OK)
 		self.set_HTTP_headers(200)
 
@@ -194,35 +255,35 @@ class BlackboardRequestHandler(BaseHTTPRequestHandler):
 #------------------------------------------------------------------------------------------------------
 
 #------------------------------------------------------------------------------------------------------
-	'''
-	Helper func for fetching board contents
-	@args:
-	@return: List of entries
-	'''
 	def board_helper(self):
+		'''
+		Helper func for fetching board contents
+		@args:
+		@return: List of entries
+		'''
 		fetch_index_entries = ""
 		for entryId, entryValue in self.server.store.items():
 			fetch_index_entries += entry_template %("entries/" + str(entryId), entryId, entryValue)
 		boardcontents = boardcontents_template % ("Title", fetch_index_entries)
 		return boardcontents
 #------------------------------------------------------------------------------------------------------
-	'''
-	Fetches board
-	@args:
-	@return: Board
-	'''
 	def do_GET_board(self):
+		'''
+		Fetches the board
+		@args:
+		@return: Board:html
+		'''
 		self.set_HTTP_headers(200)
 		html_response = self.board_helper()
 		self.wfile.write(html_response)
 
 #------------------------------------------------------------------------------------------------------
-	'''
-	Retrieve entry
-	@args:
-	@return: Entry:html
-	'''
 	def do_GET_entry(entryID):
+		'''
+		Retrieve entry
+		@args:
+		@return: Entry:html
+		'''
 		#Find the specific value for the entry, if entry does not exist set value to None
 		entryValue = self.server.store[entryId] if entryId in self.server.store else None
 		#Return found entry if it exists, or return empty string if no such entry was found
@@ -232,6 +293,11 @@ class BlackboardRequestHandler(BaseHTTPRequestHandler):
 # Request handling - POST
 #------------------------------------------------------------------------------------------------------
 	def do_POST(self):
+		'''
+		Handles POST requests
+		@args:
+		@return:
+		'''
 		print("Receiving a POST on %s" % self.path)
 		# Here, we should check which path was requested and call the right logic based on it
 		# We should also parse the data received
@@ -256,20 +322,25 @@ class BlackboardRequestHandler(BaseHTTPRequestHandler):
 #Implement POST /entries					#Add a new entry
 #Implement POST /entries/entryID			#Delete an entry
 	def do_POST_path(self):
+		'''
+		Handles POST request routing
+		@args:
+		@return:
+		'''
 		path = self.path[1::].split('/')
 		if path[0] == 'board' and len(path) < 2:
 			self.do_POST_add_entry()
 		elif path[0] == 'entries' and len(path) > 1:
 			self.do_POST_modify_entry(path[1])
 		else:
-			return
+			pass
 #------------------------------------------------------------------------------------------------------
-	'''
-	Adds a new entry
-	@args:
-	@return: Status code
-	'''
 	def do_POST_add_entry(self):
+		'''
+		Adds a new entry
+		@args:
+		@return: Status code
+		'''
 		post_data = self.parse_POST_request()
 		text = post_data["entry"][0] if "entry" in post_data else None
 		if text != None and self.server.add_value_to_store(text):
@@ -278,12 +349,12 @@ class BlackboardRequestHandler(BaseHTTPRequestHandler):
 			self.send_error(400, "Value was not added.")
 
 #------------------------------------------------------------------------------------------------------
-	'''
-	Modifies a specific entry
-	@args:
-	@return: Status code
-	'''
 	def do_POST_modify_entry(self, entryID):
+		'''
+		Modifies a specific entry
+		@args:
+		@return: Status code
+		'''
 		post_data = self.parse_POST_request()
 		delete = post_data["delete"] if "delete" in post_data else None
 		if delete == None:
@@ -296,12 +367,12 @@ class BlackboardRequestHandler(BaseHTTPRequestHandler):
 		self.send_response(status_code)
 
 #------------------------------------------------------------------------------------------------------
-	'''
-	Deletes an entry
-	@args: none
-	@return: Status code
-	'''
 	def do_POST_delete_entry(self, entryID):
+		'''
+		Deletes an entry
+		@args: none
+		@return: Status code
+		'''
 		status_code = 200 if entryID != None and self.server.delete_value_in_store(entryID) else 400
 		return status_code
 #------------------------------------------------------------------------------------------------------
