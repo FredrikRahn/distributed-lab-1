@@ -34,7 +34,7 @@ class BlackboardServer(HTTPServer):
 		Init of Blackboard HTTP server
 		@args:	server_address:String, Address to Server
 				handler:BaseHTTPRequestHandler, Server handler
-				node_id:String, The ID of the node
+				node_id:Number, The ID of the node
 				vessel_list:[String], list of vessels
 		@return:
 		'''
@@ -71,7 +71,7 @@ class BlackboardServer(HTTPServer):
 		Modifies value in store
 		@args:	Key:Number, 	Key to be modified
 				Value:String, 	Value to be added to key
-		@return: [Key:String, Value:String]
+		@return: [Key:Number, Value:String]
 		'''
 		if key in self.store:								#If Key exists
 			self.store[key] = value                         #update key value to value
@@ -97,7 +97,7 @@ class BlackboardServer(HTTPServer):
 		@args:	Vessel_ip:String, 	IP to the vessel
 				Path:String, 		The path where the request will be sent
 				Action:Any, 		Action to be performed
-				Key:String, 		Key for store
+				Key:Number, 		Key for store
 				Value:String, 		Value for store
 		@return:Entire page:html
 		'''
@@ -138,11 +138,10 @@ class BlackboardServer(HTTPServer):
 		Handles propagation of requests to vessels
 		@args:	Path:String,	The path where the request will be sent
 				Action:String, 	The action that should be performed by the other vessels
-				Key:String, 	Key that should be used in action
+				Key:Number, 	Key that should be used in action
 				Value:String, 	Value corresponding to key
 		@return:
 		'''
-		print(self.vessels)
 		for vessel in self.vessels:
 			# We should not send it to our own IP, or we would create an infinite loop of updates
 			if vessel != ("10.1.0.%s" % self.vessel_id):
@@ -150,7 +149,6 @@ class BlackboardServer(HTTPServer):
 				# Here, we do it only once
 				self.contact_vessel(vessel, path, action, key, value)
 #------------------------------------------------------------------------------------------------------
-
 # This class implements the logic when a server receives a GET or POST
 # It can access to the server data through self.server.*
 # i.e. the store is accessible through self.server.store
@@ -199,10 +197,6 @@ class BlackboardRequestHandler(BaseHTTPRequestHandler):
 			self.do_GET_entry(path[1])
 		else:
 			self.do_GET_Index()		#Unknown path, route user to index
-#------------------------------------------------------------------------------------------------------
-# GET logic - specific path
-#Implement /board
-#Implement /entry/entryID
 #------------------------------------------------------------------------------------------------------
 	def do_GET_Index(self):
 		'''
@@ -290,7 +284,7 @@ class BlackboardRequestHandler(BaseHTTPRequestHandler):
 				self.propagate_action(action='delete', key=entry[0])
 			else:
 				modified_value = post_data['entry'][0]
-                                entry = self.do_POST_modify_entry(int(entryID), modified_value)
+				entry = self.do_POST_modify_entry(int(entryID), modified_value)
 				self.propagate_action(action='modify', key=entry[0], value=entry[1])
 		else:
 			self.send_error(400, 'Delete flag missing from request')
