@@ -291,7 +291,6 @@ class BlackboardRequestHandler(BaseHTTPRequestHandler):
 			else:
 				modified_value = post_data['entry'][0]
                                 entry = self.do_POST_modify_entry(int(entryID), modified_value)
-				#entry = self.server.modify_value_in_store(int(entryID), modified_value)
 				self.propagate_action(action='modify', key=entry[0], value=entry[1])
 		else:
 			self.send_error(400, 'Delete flag missing from request')
